@@ -7,4 +7,4 @@ namespace: my-express-app
 images:
 - name: ghcr.io/enfojt/nodejs-example
   newName: ghcr.io/enfojt/nodejs-example
-  newTag: 4d8d1babb9210400b9c820dec319b02dda72347e
+  newTag: bd973e18524102abc3e89c5387756e79176f6e43
