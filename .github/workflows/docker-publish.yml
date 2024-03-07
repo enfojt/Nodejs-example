@@ -75,7 +75,7 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/enfojt/nodejs-example:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -94,3 +94,43 @@ jobs:
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
         run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+
+
+  deploy:
+  
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    
+    - name: Check out code
+      uses: actions/checkout@v3
+      
+    - name: Setup Kustomize
+      if: github.event_name != 'pull_request'
+      uses: imranismail/setup-kustomize@v1
+      with:
+        kustomize-version: "3.6.1"
+
+    - name: Update Kubernetes resources
+      if: github.event_name != 'pull_request'
+      env:
+        DOCKER_USERNAME: ${{ github.actor }}
+      run: |
+        cd argo
+        kustomize edit set image ghcr.io/$DOCKER_USERNAME/nodejs-example=ghcr.io/$DOCKER_USERNAME/nodejs-example:$GITHUB_SHA
+        cat kustomization.yaml
+
+    - name: Push updated image tag
+      if: github.event_name != 'pull_request'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git commit -am "feat: Update deployment image tag to ${{ github.sha }} [skip ci]"
+
+    - name: Push changes
+      if: github.event_name != 'pull_request'
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
